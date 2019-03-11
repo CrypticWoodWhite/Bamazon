@@ -79,16 +79,19 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
 });
 
 
-function isthereEnoughQuantity(quantityWanted) {
-    connection.query()
+function isthereEnoughQuantity(productWanted, quantityWanted) {
+    connection.query("SELECT stock_quantity, price FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
+        console.log(res);
+        // console.log(res.stock_quantity);
+        // console.log(res.price);
+    })
 }
 
 function transaction(productWanted, quantityWanted) {
-    remove quantity purchased from stock
-    var totalPrice = quantityWanted * item price 
-    console.log("The total price is $" + totalPrice);
-    console.log("Thanks for shopping at Bamazon, we hope to see you again!");cxvdfdddddddddds
+    // remove quantity purchased from stock
+    // var totalPrice = quantityWanted * item price 
+    // console.log("The total price is $" + totalPrice);
+    // console.log("Thanks for shopping at Bamazon, we hope to see you again!");
 }
-
 
 connection.end();
