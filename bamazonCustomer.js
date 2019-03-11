@@ -45,50 +45,50 @@ function createDBandTable(DBname, tableName) {
 //         })
 // }
 
-createDBandTable("Bamazon", "Products").then(function() {
+createDBandTable("Bamazon", "Products").then(function() { // why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
+    console.log("\r\nWelcome to the Bamazon store!\r\n");
     inquirer.prompt([
         {
-            type: "input",
-            message: "Which product do you want to buy?",
+            type: "rawlist",
             name: "productQ",
+            message: "Which product do you want to buy?",
+            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]
         },
         {
             type: "input",
-            message: "How many do you want?",
             name: "quantityQ",
+            message: "How many do you want?",
+            validate: function(input) { // ask about validate function syntax
+                if (isNaN(input) === true) {
+                    console.log("\r\nThat's not a number, try again");
+                    return false;
+                }
+                if (input <= 0) {
+                    console.log("\r\nThat's not a valid input, try again");
+                    return false;
+                }
+                return true;
+            }
         }
-        ]).then(function(customerResponse) {
-            var productWanted = customerResponse.productQ;
-            var quantityWanted = customerResponse.quantityQ;
-            doesProductExist(productWanted);
-            isthereEnoughQuantity(quantityWanted);
-        })
+        
+    ]).then(function(customerResponse) {
+        var productWanted = customerResponse.productQ;
+        var quantityWanted = customerResponse.quantityQ;
+        isthereEnoughQuantity(productWanted, quantityWanted);
+    })
 });
 
 
-function doesProductExist(productWanted) {
-    // check if product exists
-    // else console.log("We do not carry that") and then ?
-    // if product exists proceed with number function
+function isthereEnoughQuantity(quantityWanted) {
+    connection.query()
 }
 
-function isNumber(value) {
-    return typeof value === "number" && isFinite(value);
+function transaction(productWanted, quantityWanted) {
+    remove quantity purchased from stock
+    var totalPrice = quantityWanted * item price 
+    console.log("The total price is $" + totalPrice);
+    console.log("Thanks for shopping at Bamazon, we hope to see you again!");cxvdfdddddddddds
 }
-
-function isthereEnoughQuantity(productQuantity) {
-    if (isNumber(productQuantity) === false) {
-        console.log("That was not a number");
-        return; // prompt again
-    }
-    else {
-        // see how many of that item there are
-        // see if there's enough
-        // if there's enough then proceed
-        // if there's not enough then return (?)
-    }
-}
-
 
 
 connection.end();
