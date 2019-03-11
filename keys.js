@@ -5,4 +5,4 @@ exports.mysql = {
     port: 3306
 };
 
-console.log("mysql password loaded");
+// console.log("mysql password loaded");
