@@ -1,7 +1,7 @@
 exports.mysql = {
     host: 'localhost',
     user: 'root',
-    password: 'catherinemysql',
+    password: process.env.MYSQLPWD,
     port: 3306
 };
 
