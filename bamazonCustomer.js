@@ -5,6 +5,15 @@ var keys = require("./keys.js");
 
 var connection = mysql.createConnection(keys.mysql);
 
+// global variables
+var buyProductName;
+var buyProductPrice;
+var buyProductQuantity;
+var totalPrice;
+var productWanted;
+var quantityWanted;
+
+
 connection.connect(function (err) {
     if (err) throw err;
 })
@@ -14,8 +23,8 @@ function createDBandTable(DBname, tableName) {
         connection.query("DROP DATABASE IF EXISTS " + DBname); // comment out this line once everything is working
         connection.query("CREATE DATABASE " + DBname); // then change this to CREATE DATABASE IF NOT EXISTS
         connection.query("USE " + DBname);
-        connection.query("CREATE TABLE " + tableName + " (item_id INT NOT NULL AUTO_INCREMENT UNIQUE, product_name VARCHAR(50), department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (item_id))");
-        connection.query("INSERT INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
+        connection.query("CREATE TABLE " + tableName + " (item_id INT NOT NULL AUTO_INCREMENT UNIQUE, product_name VARCHAR(50), department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (item_id))"); // IF NOT EXISTS
+        connection.query("INSERT INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)"); // INSERT ONLY IF THESE RECORDS DO NOT EXIST
         connection.query("SELECT * FROM " + tableName, function(err, res) {
             if (err) {
                 console.log("Error: " + err);
@@ -53,8 +62,8 @@ function customerQ() {
             }
         }
         ]).then(function(customerResponse) {
-            var productWanted = customerResponse.productQ;
-            var quantityWanted = customerResponse.quantityQ;
+            productWanted = customerResponse.productQ;
+            quantityWanted = customerResponse.quantityQ;
             checkStock(productWanted, quantityWanted);
         })
 }
@@ -74,11 +83,11 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
             message: "How many do you want?",
             validate: function(input) { // ask about validate function syntax
                 if (isNaN(input) === true) {
-                    console.log("\r\nThat's not a number, try again");
+                    console.log("\r\n\r\nThat's not a number, try again\r\n");
                     return false;
                 }
                 if (input <= 0) {
-                    console.log("\r\nThat's not a valid input, try again");
+                    console.log("\r\n\r\nThat's not a valid input, try again\r\n");
                     return false;
                 }
                 return true;
@@ -86,74 +95,74 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
         }
         
     ]).then(function(customerResponse) {
-        var productWanted = customerResponse.productQ;
-        var quantityWanted = customerResponse.quantityQ;
+        productWanted = customerResponse.productQ;
+        quantityWanted = customerResponse.quantityQ;
         checkStock(productWanted, quantityWanted);
     })
 });
 
 function checkStock(productWanted, quantityWanted) {
     connection.query("SELECT item_id, product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
-        // console.table(res);
-        var totalPrice;
-        if (quantityWanted > res[0].stock_quantity) {
-            console.log("We're sorry but we only have " + res[0].stock_quantity + " of those in stock.")
+        buyProductName = res[0].product_name;
+        buyProductPrice = res[0].price_USD;
+        buyProductQuantity = res[0].stock_quantity;
+        if (quantityWanted > buyProductQuantity) {
+            console.log("\r\nWe're sorry but we only have " + buyProductQuantity + " of those in stock.\r\n");
             notEnoughStock();
         }
         else {
-            totalPrice = parseFloat(quantityWanted) * parseFloat(res[0].price_USD);
-            console.log("The total price is $" + totalPrice);
-            inquirer.prompt([
-                {
-                    type: "confirm",
-                    name: "buyornobuy",
-                    message: "Do you want to go through with this purchase?"
-                }
-            ]).then(function(response) {
-                if (response.buyornobuy === true) {
-                    console.log(res[0].stock_quantity);
-                    res[0].stock_quantity = res[0].stock_quantity - quantityWanted;
-                    // console.log(res[0].stock_quantity);
-                }
-                else {
-                    console.log("We're sorry to hear that.");
-                    inquirer.prompt([
-                        {
-                            type: "confirm",
-                            name: "buysomethingelse",
-                            message: "Do you want to purchase something else?"
-                        }
-                    ]).then(function(response) {
-                        if (response.buysomethingelse === true) {
-                            customerQ();
-                        }
-                        else {
-                            console.log("Thanks for stopping by, have a great rest of your day");
-                            connection.end();
-                            return;
-                        }
-                    })
-                }
-            }).then(function() {
-                inquirer.prompt([
-                    {
-                        type: "confirm",
-                        name: "anotherpurchase",
-                        message: "Do you want to purchase something else?"
-                    }
-                ]).then(function(response) {
-                    if (response.anotherpurchase === true) {
-                        customerQ();
+            totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
+            console.log("\r\nThe total price is $" + totalPrice + "\r\n");
+            transactions(buyProductName, buyProductPrice, buyProductQuantity);
+        }
+    })
+}
+
+function transactions(buyProductName, buyProductPrice, buyProductQuantity) {
+    inquirer.prompt([
+        {
+            type: "confirm",
+            name: "buyornobuy",
+            message: "Do you want to go through with this purchase?"
+        }
+    ]).then(function(response, err) {
+        if (err) throw err;
+        if (response.buyornobuy === true) {
+            var updateProductQuantity = buyProductQuantity - quantityWanted;
+            connection.query("UPDATE Products SET stock_quantity = ? WHERE product_name = ?", [updateProductQuantity, buyProductName], function(err, res) {
+                if (err) throw err;
+                return res;
+            })
+            console.log("\r\nThere you go! I hope you enjoy your " + buyProductName + "!\r\n");
+        }
+        else {
+            console.log("\r\nWe're sorry to hear that.\r\n");
+        }
+        inquirer.prompt([
+            {
+                type: "confirm",
+                name: "anotherpurchase",
+                message: "Do you want to purchase something else?"
+            }
+        ]).then(function(response) {
+            if (response.anotherpurchase === true) {
+                customerQ();
+            }
+            else {
+                console.log("\r\nThanks for stopping by! Have a great rest of your day!\r\n\r\n");
+                connection.query(("SELECT * FROM Products"), function(err, res) {
+                    if (err) {
+                        console.log(err);
                     }
                     else {
-                        console.log("Thanks for your business! Have a great rest of your day");
-                        connection.end();
-                        return;
+                        console.table(res);
+                        return res;
                     }
                 })
-            })
-
-        }
+                connection.end();
+                return;
+            }
+        })
     })
 }
 
@@ -168,27 +177,47 @@ function notEnoughStock() {
     ]).then(function(response) {
         if (response.notenoughstock === "Not purchase anything") {
             console.log("\r\nWe're sorry we couldn't help you today. Please come back anytime.")
+            connection.query(("SELECT * FROM Products"), function(err, res) {
+                if (err) throw err;
+                console.table(res);
+            })
             connection.end();
             return;
         }
         else if (response.notenoughstock === "Purchase a smaller amount") {
+            inquirer.prompt([
+                {
+                    type: "input",
+                    name: "smallerquantity",
+                    message: "How many do you want?",
+                    validate: function(input) { // ask about validate function syntax
+                        if (isNaN(input) === true) {
+                            console.log("\r\n\r\nThat's not a number, try again\r\n");
+                            return false;
+                        }
+                        if (input <= 0) {
+                            console.log("\r\n\r\nThat's not a valid input, try again\r\n");
+                            return false;
+                        }
+                        if (input > buyProductQuantity) {
+                            console.log("\r\n\r\nThat's more than what we have in stock, try again\r\n");
+                            return false;
+                        }
+                        return true;
+                    }
+                }
+            ]).then(function(response) {
+                quantityWanted = response.smallerquantity;
+                totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
+                console.log("\r\nThe total price is $" + totalPrice + "\r\n");
+                transactions(buyProductName, buyProductPrice, buyProductQuantity);
+            })
 
         }
         else if (response.notenoughstock === "Purchase something else") {
-
+            customerQ();
         }
     }
 
     )
 }
-
-function transaction(productWanted, quantityWanted) {
-    // remove quantity purchased from stock
-    // var totalPrice = quantityWanted * item price 
-    // console.log("The total price is $" + totalPrice);
-    // console.log("Thanks for shopping at Bamazon, we hope to see you again!");
-}
-
-
-
-// connection.end();
