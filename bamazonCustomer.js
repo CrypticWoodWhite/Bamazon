@@ -1,6 +1,7 @@
+var mysql = require("mysql");
 var inquirer = require("inquirer");
 require("dotenv").config();
-var connection = require("./server.js");
+var keys = require("./keys.js");
 
 // global variables
 var buyProductName;
@@ -10,6 +11,7 @@ var totalPrice;
 var productWanted;
 var quantityWanted;
 
+var connection = mysql.createConnection(keys.mysql);
 connection.connect(function (err) {
     if (err) throw err;
 })
@@ -17,14 +19,17 @@ connection.connect(function (err) {
 // function to create the DB and table
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
-        connection.query("DROP DATABASE IF EXISTS " + DBname); // comment out this line once everything is working
-        connection.query("CREATE DATABASE " + DBname); // then change this to CREATE DATABASE IF NOT EXISTS
+        connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
+
         connection.query("USE " + DBname);
-        connection.query("CREATE TABLE " + tableName + " (item_id INT NOT NULL AUTO_INCREMENT UNIQUE, product_name VARCHAR(50), department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (item_id))"); // IF NOT EXISTS
-        connection.query("INSERT INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)"); // INSERT ONLY IF THESE RECORDS DO NOT EXIST
+
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT NOT NULL AUTO_INCREMENT UNIQUE, product_name VARCHAR(50), department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (item_id))");
+
+        connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
+
         connection.query("SELECT * FROM " + tableName, function(err, res) {
             if (err) {
-                console.log("Error: " + err);
+                console.log(err);
                 reject(err);
             } else {
                 console.table(res);
@@ -126,7 +131,7 @@ function transactions(buyProductName, buyProductQuantity) {
                         console.log(err);
                     }
                     else {
-                        console.table(res);
+                        // console.table(res);
                         return res;
                     }
                 })
@@ -181,10 +186,10 @@ function notEnoughStock() {
     ]).then(function(response) {
         if (response.notenoughstock === "Not purchase anything") {
             console.log("\r\nWe're sorry we couldn't help you today. Please come back anytime.")
-            connection.query(("SELECT * FROM Products"), function(err, res) {
-                if (err) throw err;
-                console.table(res);
-            })
+            // connection.query(("SELECT * FROM Products"), function(err, res) {
+            //     if (err) throw err;
+            //     console.table(res);
+            // })
             connection.end();
             return;
         }
@@ -214,7 +219,7 @@ function notEnoughStock() {
                 quantityWanted = response.smallerquantity;
                 totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
                 console.log("\r\nThe total price is $" + totalPrice + "\r\n");
-                transactions(buyProductName, buyProductPrice, buyProductQuantity);
+                transactions(buyProductName, buyProductQuantity);
             })
 
         }
@@ -226,4 +231,4 @@ function notEnoughStock() {
     )
 }
 
-module.exports = customer;
+module.exports = createDBandTable;
