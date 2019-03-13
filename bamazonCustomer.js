@@ -1,9 +1,6 @@
-var mysql = require("mysql");
 var inquirer = require("inquirer");
 require("dotenv").config();
-var keys = require("./keys.js");
-
-var connection = mysql.createConnection(keys.mysql);
+var connection = require("./server.js");
 
 // global variables
 var buyProductName;
@@ -13,11 +10,11 @@ var totalPrice;
 var productWanted;
 var quantityWanted;
 
-
 connection.connect(function (err) {
     if (err) throw err;
 })
 
+// function to create the DB and table
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
         connection.query("DROP DATABASE IF EXISTS " + DBname); // comment out this line once everything is working
@@ -37,37 +34,7 @@ function createDBandTable(DBname, tableName) {
     })
 }
 
-function customerQ() {
-    inquirer.prompt([
-        {
-            type: "rawlist",
-            name: "productQ",
-            message: "Which product do you want to buy?",
-            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]
-        },
-        {
-            type: "input",
-            name: "quantityQ",
-            message: "How many do you want?",
-            validate: function(input) { // ask about validate function syntax
-                if (isNaN(input) === true) {
-                    console.log("\r\nThat's not a number, try again");
-                    return false;
-                }
-                if (input <= 0) {
-                    console.log("\r\nThat's not a valid input, try again");
-                    return false;
-                }
-                return true;
-            }
-        }
-        ]).then(function(customerResponse) {
-            productWanted = customerResponse.productQ;
-            quantityWanted = customerResponse.quantityQ;
-            checkStock(productWanted, quantityWanted);
-        })
-}
-
+// creates the DB and table, then asks the initial questions to the customer
 createDBandTable("Bamazon", "Products").then(function() { // why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
     console.log("\r\nWelcome to the Bamazon store! Look at the table above to see what whimsically diabolical things we have to offer\r\n");
     inquirer.prompt([
@@ -101,6 +68,9 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
     })
 });
 
+
+
+// checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {
     connection.query("SELECT item_id, product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
         buyProductName = res[0].product_name;
@@ -113,12 +83,13 @@ function checkStock(productWanted, quantityWanted) {
         else {
             totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
             console.log("\r\nThe total price is $" + totalPrice + "\r\n");
-            transactions(buyProductName, buyProductPrice, buyProductQuantity);
+            transactions(buyProductName, buyProductQuantity);
         }
     })
 }
 
-function transactions(buyProductName, buyProductPrice, buyProductQuantity) {
+// function to ask customer if they want to go through with the purchase, updates the table, and asks if they want something else
+function transactions(buyProductName, buyProductQuantity) {
     inquirer.prompt([
         {
             type: "confirm",
@@ -166,6 +137,39 @@ function transactions(buyProductName, buyProductPrice, buyProductQuantity) {
     })
 }
 
+// function to ask the customer what they want to buy
+function customerQ() {
+    inquirer.prompt([
+        {
+            type: "rawlist",
+            name: "productQ",
+            message: "Which product do you want to buy?",
+            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]
+        },
+        {
+            type: "input",
+            name: "quantityQ",
+            message: "How many do you want?",
+            validate: function(input) { // ask about validate function syntax
+                if (isNaN(input) === true) {
+                    console.log("\r\nThat's not a number, try again");
+                    return false;
+                }
+                if (input <= 0) {
+                    console.log("\r\nThat's not a valid input, try again");
+                    return false;
+                }
+                return true;
+            }
+        }
+        ]).then(function(customerResponse) {
+            productWanted = customerResponse.productQ;
+            quantityWanted = customerResponse.quantityQ;
+            checkStock(productWanted, quantityWanted);
+        })
+}
+
+// function to ask customer what they want to do next if not enough stock
 function notEnoughStock() {
     inquirer.prompt([
         {
@@ -221,3 +225,5 @@ function notEnoughStock() {
 
     )
 }
+
+module.exports = customer;
