@@ -182,7 +182,7 @@ function addInvent() {
         console.log(response.product);
         console.log(response.quantity);
         connection.query("SELECT stock_quantity FROM Products WHERE product_name = '" + response.product + "'", function(err, res) {
-            var newQuantity = res + response.quantity;
+            newQuantity = res + response.quantity;
             console.log(newQuantity);
             connection.query("UPDATE Products SET (product_quantity = " + newQuantity + ") WHERE product_name = '" + response.product + "'");
             if (err) {

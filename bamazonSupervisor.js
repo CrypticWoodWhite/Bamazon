@@ -144,7 +144,7 @@ function createDept() {
             }
         }
     ]).then(function(response) {
-        connection.query("INSERT INTO Departments(department_id, department_name, overhead_costs) VALUES(" + response.deptID + ", '" + response.deptname + "', " + response.deptovrhdcosts + ")", function(err) {
+        connection.query("INSERT IGNORE INTO Departments(department_id, department_name, overhead_costs) VALUES(" + response.deptID + ", '" + response.deptname + "', " + response.deptovrhdcosts + ")", function(err) {
             if (err) {
                 console.log(err);
             }

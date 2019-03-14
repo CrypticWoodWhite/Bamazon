@@ -4,7 +4,7 @@ require("dotenv").config();
 const keys = require("./keys.js");
 
 // global variables
-// need to move these to more appropriate locations
+// which ones do not need to be global?
 var buyProductName;
 var buyProductPrice;
 var buyProductQuantity;
