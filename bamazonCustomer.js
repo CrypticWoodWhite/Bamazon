@@ -22,7 +22,7 @@ connection.connect(function (err) {
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
 
-        connection.query("DROP DATABASE IF EXISTS " + DBname);
+        // connection.query("DROP DATABASE IF EXISTS " + DBname);
 
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
@@ -67,15 +67,35 @@ function createSecondTable(DBname, tableName) {
 }
 createSecondTable("Bamazon", "Departments");
 
+// function to create array of names of all products in stock
+function productsArray() {
+    return new Promise(function(reject, resolve) {
+        connection.query("SELECT product_name FROM Products", function(err, res) {
+            if (err) {
+                reject(error);
+            }
+            var allItemsArray = [];
+            for (i=0; i<res.length; i++) {
+                allItemsArray.push(Object.values(res[i])[0]);
+            }
+            resolve(allItemsArray);
+        })
+    })
+}
+
 // creates the DB and table, then asks the initial questions to the customer
-createDBandTable("Bamazon", "Products").then(function() { // why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
+// why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
+createDBandTable("Bamazon", "Products").then(function() {
+    productsArray().then(function(error) {
+        console.log(error);
+    }, function(results) {
     console.log("\r\nWelcome to the Bamazon store! Look at the table above to see what whimsically diabolical things we have to offer\r\n");
     inquirer.prompt([
         {
             type: "rawlist",
             name: "productQ",
             message: "Which product do you want to buy?",
-            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"] // this should be a dynamically updated list
+            choices: results // this array dynamically updates as products are added to the inventory
         },
         {
             type: "input",
@@ -88,21 +108,22 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
                 }
                 return true;
             }
-        }
-        
+        } 
     ]).then(function(customerResponse) {
         productWanted = customerResponse.productQ;
         quantityWanted = customerResponse.quantityQ;
         checkStock(productWanted, quantityWanted);
-    })
-});
+    }).catch(function(error) {
+        console.log(error);
+    })})
+})
 
 // checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {
-    connection.query("SELECT product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
-        buyProductName = res[0].product_name;
-        buyProductPrice = res[0].price_USD;
-        buyProductQuantity = res[0].stock_quantity;
+    connection.query("SELECT product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE product_name = '" + productWanted + "'", function(err, result) {
+        buyProductName = result[0].product_name;
+        buyProductPrice = result[0].price_USD;
+        buyProductQuantity = result[0].stock_quantity;
         if (quantityWanted > buyProductQuantity) {
             console.log("\r\nWe're sorry but we only have " + buyProductQuantity + " of those in stock.\r\n");
             notEnoughStock();
@@ -123,11 +144,12 @@ function transactions(buyProductName, buyProductQuantity, totalPrice) {
             name: "buyornobuy",
             message: "Do you want to go through with this purchase?"
         }
-    ]).then(function(response, err) {
-        if (err) throw err;
+    ]).then(function(error) {
+        console.log(error);
+    }, function(response) {
         if (response.buyornobuy === true) {
             var updateProductQuantity = buyProductQuantity - quantityWanted;
-            connection.query("UPDATE Products SET stock_quantity = ? WHERE product_name = ?", [updateProductQuantity, buyProductName], function(err, res) {
+            connection.query("UPDATE Products SET stock_quantity = " + updateProductQuantity + " WHERE product_name = '" + buyProductName + "'", function(err, res) {
                 if (err) throw err;
                 return res;
             })
@@ -140,30 +162,35 @@ function transactions(buyProductName, buyProductQuantity, totalPrice) {
         else {
             console.log("\r\nWe're sorry to hear that.\r\n");
         }
-        inquirer.prompt([
-            {
-                type: "confirm",
-                name: "anotherpurchase",
-                message: "Do you want to purchase something else?"
-            }
-        ]).then(function(response) {
-            if (response.anotherpurchase === true) {
-                customerQ();
-            }
-            else {
-                console.log("\r\nThanks for stopping by! Have a great rest of your day!\r\n\r\n");
-                connection.query(("SELECT * FROM Products"), function(err, res) {
-                    if (err) {
-                        console.log(err);
-                    }
-                    else {
-                        return res;
-                    }
-                })
-                connection.end();
-                return;
-            }
-        })
+    }).then(function(error) {
+        console.log(error);
+     }, function() {
+            inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "anotherpurchase",
+                    message: "Do you want to purchase something else?"
+                }
+            ]).then(function(error) {
+                console.log(error);
+            }, function(response) {
+                if (response.anotherpurchase === true) {
+                    customerQ();
+                }
+                else {
+                    console.log("\r\nThanks for stopping by! Have a great rest of your day!\r\n\r\n");
+                    connection.query(("SELECT * FROM Products"), function(err, res) {
+                        if (err) {
+                            console.log(err);
+                        }
+                        else {
+                            return res;
+                        }
+                    })
+                    connection.end();
+                    return;
+                }
+            })
     })
 }
 

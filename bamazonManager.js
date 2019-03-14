@@ -160,39 +160,36 @@ function productsArray() {
 
 // function to add more to products already in stock
 function addInvent() {
-    productsArray().finally(function(allItemsArray) {
-    // I get a UnhandledPromiseRejectionWarning error here. Console log shows that the promise does not pass its returned value (allItemsArray) into the .then() function
-    // Adding a .catch() at the end of the chain to handle the error but that doesn't help with my problem, just shows me more precisely where my problem is
-    // using .finally() instead of .then() doesn't help
-        console.log("\r\n\r\nproductsArray results: " + allItemsArray + "\r\n\r\n");
+    productsArray().then(function(error) {
+        console.log(error);
+    }, function(result) {
         inquirer.prompt([
-        {
-            type: "rawlist",
-            name: "product",
-            message: "What product do you want to add inventory to?",
-            choices: allItemsArray
-        },
-        {
-            type: "input",
-            name: "quantity",
-            message: "How many do you want to add?"
-        }
-        ])
-    }).then(function(response) {
-        console.log(response.product);
-        console.log(response.quantity);
-        connection.query("SELECT stock_quantity FROM Products WHERE product_name = '" + response.product + "'", function(err, res) {
-            newQuantity = res + response.quantity;
-            console.log(newQuantity);
-            connection.query("UPDATE Products SET (product_quantity = " + newQuantity + ") WHERE product_name = '" + response.product + "'");
-            if (err) {
-                console.log(err);
-            } else {
-                console.log("\r\n" + response.quantity + " of " + response.product + " successfully added to inventory");
-                mgrOptions();
+            {
+                type: "rawlist",
+                name: "product",
+                message: "What product do you want to add inventory to?",
+                choices: result
+            },
+            {
+                type: "input",
+                name: "quantity",
+                message: "How many do you want to add?"
             }
-        }
-        )
+        ]).then(function(response) {
+        connection.query("SELECT stock_quantity FROM Products WHERE product_name = '" + response.product + "'", function(err, res) {
+            var currentStock = parseInt(res[0].stock_quantity);
+            newQuantity = currentStock + parseInt(response.quantity);
+            connection.query("UPDATE Products SET stock_quantity = " + newQuantity + " WHERE product_name = '" + response.product + "'", function(err) {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log("\r\n" + response.quantity + " units of " + response.product + " successfully added to inventory.");
+                    mgrOptions();
+                }
+            })
+        })}).catch(function(error) {
+            console.log(error);
+        })
     })
 }
 
@@ -214,50 +211,57 @@ function deptArray() {
 
 // function to add new products
 function addProd() {
-    inquirer.prompt([
-        {
-            type: "input",
-            name: "productname",
-            message: "What product do you want to add?"
-        },
-        {
-            type: "input",
-            name: "deptname",
-            message: "What department will it be in?" // this really should be a list, but I'm still working on that above and in supervisor script
-        },
-        {
-            type: "input",
-            name: "price",
-            message: "What will the price (USD) be?",
-            validate: function(input) {
-                if ((isNaN(input) === true) || (input <= 0)) {
-                    console.log("\r\n\r\nThat's not a valid input, try again\r\n");
-                    return false;
+    deptArray().then(function(error) {
+        console.log(error);
+    }, function(result) {
+        inquirer.prompt([
+            {
+                type: "input",
+                name: "productname",
+                message: "What product do you want to add?"
+            },
+            {
+                type: "rawlist",
+                name: "deptname",
+                message: "What department will it be in?",
+                choices: result
+            },
+            {
+                type: "input",
+                name: "price",
+                message: "What will the price (USD) be?",
+                validate: function(input) {
+                    if ((isNaN(input) === true) || (input <= 0)) {
+                        console.log("\r\n\r\nThat's not a valid input, try again\r\n");
+                        return false;
+                    }
+                    return true;
                 }
-                return true;
-            }
-        },
-        {
-            type: "input",
-            name: "quantity",
-            message: "How many are you adding?",
-            validate: function(input) {
-                if ((isNaN(input) === true) || (input <= 0)) {
-                    console.log("\r\n\r\nThat's not a valid input, try again\r\n");
-                    return false;
+            },
+            {
+                type: "input",
+                name: "quantity",
+                message: "How many are you adding?",
+                validate: function(input) {
+                    if ((isNaN(input) === true) || (input <= 0)) {
+                        console.log("\r\n\r\nThat's not a valid input, try again\r\n");
+                        return false;
+                    }
+                    return true;
                 }
-                return true;
             }
-        }
-    ]).then(function(response) {
-        connection.query("INSERT IGNORE INTO Products (product_name, department_name, price_USD, stock_quantity) VALUES ('" + response.productname + "', '" + response.deptname + "', " + response.price + ", " + response.quantity + ")", function(err) {
-            if (err) {
-                console.log(err);
-            }
-            else {
-                console.log("\r\n" + response.productname + " successfully added to inventory.\r\n");
-                mgrOptions();
-            }
+        ]).then(function(response) {
+            connection.query("INSERT IGNORE INTO Products (product_name, department_name, price_USD, stock_quantity) VALUES ('" + response.productname + "', '" + response.deptname + "', " + response.price + ", " + response.quantity + ")", function(err) {
+                if (err) {
+                    console.log(err);
+                }
+                else {
+                    console.log("\r\n" + response.productname + " successfully added to inventory.");
+                    mgrOptions();
+                }
+            })
+        }).catch(function(error) {
+            console.log(error);
         })
     })
 }
