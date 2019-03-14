@@ -16,16 +16,5 @@
   "bugs": {
     "url": "https://github.com/CrypticWoodWhite/Bamazon/issues"
   },
-  "homepage": "https://github.com/CrypticWoodWhite/Bamazon#readme",
-  "dependencies": {
-    "dotenv": "^6.2.0",
-    "inquirer": "^6.2.2",
-    "mysql": "^2.16.0"
-  },
-  { "scripts" :
-    { 
-    "prestart" : "node server.js", 
-    "start" : "node bamazonCustomer.js"
-    }
-  }
+  "homepage": "https://github.com/CrypticWoodWhite/Bamazon#readme"
 }

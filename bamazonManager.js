@@ -122,11 +122,13 @@ function viewLow() {
 function productsArray() {
     return new Promise(function(reject, resolve) {
         connection.query("SELECT product_name FROM Products", function(err, res) {
+            if (err) {
+                reject(err);
+            }
             var allItemsArray = [];
             for (i=0; i<res.length; i++) {
                 allItemsArray.push(Object.values(res[i])[0]);
             }
-            // console.log(allItemsArray);
             resolve(allItemsArray);
         })
     })
@@ -134,15 +136,8 @@ function productsArray() {
 
 // function to add more to products already in stock
 function addInvent() {
-
     productsArray().then(function(results) {
-        console.log(results);
-    })
-
-    productsArray().catch(function(err) {
-        console.log(err.message);
-    }).then(function(results) {
-        console.log("\r\n\r\nproductsArray results: " + results + "\r\n\r\n");
+        // console.log("\r\n\r\nproductsArray results: " + results + "\r\n\r\n");
         inquirer.prompt([
         {
             type: "rawlist",
@@ -156,7 +151,7 @@ function addInvent() {
             message: "How many do you want to add?"
         }
         ])
-    }).then(function(response) {
+    }).catch(function(error) {console.log(error);}).then(function(response) {
         console.log(response.product);
         console.log(response.quantity);
         connection.query("SELECT stock_quantity FROM Products WHERE product_name = '" + response.product + "'", function(err, res) {
