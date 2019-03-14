@@ -1,21 +1,22 @@
-var mysql = require("mysql");
-var inquirer = require("inquirer");
+const mysql = require("mysql");
+const inquirer = require("inquirer");
 require("dotenv").config();
-var keys = require("./keys.js");
+const keys = require("./keys.js");
 
-var connection = mysql.createConnection(keys.mysql);
+const connection = mysql.createConnection(keys.mysql);
 connection.connect(function (err) {
     if (err) throw err;
 })
 
-// function to create database and table if they do not exist, if they do exist then nothing happens
+// functions to create database and tables if they do not exist, if they do exist then nothing happens
+// having these functions in each script means that the scripts don't depend on each other
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (product_name))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) DEFAULT(0), PRIMARY KEY (product_name))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -30,13 +31,36 @@ function createDBandTable(DBname, tableName) {
     })
 }
 
+function createSecondTable(DBname, tableName) {
+    return new Promise(function(resolve, reject) {
+        
+        connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
+
+        connection.query("USE " + DBname);
+
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (department_id VARCHAR(50) NOT NULL UNIQUE, department_name VARCHAR(20), overhead_costs INT(10), PRIMARY KEY (department_id))");
+
+        connection.query("INSERT IGNORE INTO " + tableName + " (department_id, department_name, overhead_costs) VALUES(7, 'Magical creatures', 130000), (666, 'Witchcraft', 25000), (923, 'Mythology', 1000000), (95, 'Normal stuff', 56000)");
+
+        connection.query("SELECT * FROM " + tableName, function(err, res) {
+            if (err) {
+                console.log(err);
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        })
+    })
+}
+createSecondTable("Bamazon", "Departments");
+
 // function to ask manager what they want to do next
 function mgrOptions() {
     inquirer.prompt([
         {
             type: "rawlist",
             name: "mgroptions",
-            message: "\r\nWhat do you want to do next, oh magnificent manager?\r\n",
+            message: "\r\nWhat do you want to do next, oh magnificent manager?",
             choices: ["View products for sale", "View low inventory", "Add to inventory", "Add new product", "Exit"]
         }
     ]).then(function(response) {
@@ -53,7 +77,7 @@ function mgrOptions() {
                 connection.end();
                 return;
 
-            default: console.log("Something broke");
+            default: console.log("\r\nSomething broke");
                 connection.end();
                 return;
         }
@@ -84,7 +108,7 @@ createDBandTable("Bamazon", "Products").then(
                 connection.end();
                 return;
 
-            default: console.log("Something broke");
+            default: console.log("\r\nSomething broke");
                 connection.end();
                 return;
         }
@@ -172,6 +196,22 @@ function addInvent() {
     })
 }
 
+// function that creates an array of department names from the Departments table, which may have more departments than Products table
+function deptArray() {
+    return new Promise(function(reject, resolve) {
+        connection.query("SELECT department_name FROM Departments", function(err, res) {
+            if (err) {
+                reject(error);
+            }
+            var allDeptsArray = [];
+            for (i=0; i<res.length; i++) {
+                allDeptsArray.push(Object.values(res[i])[0]);
+            }
+            resolve(allDeptsArray);
+        })
+    })
+}
+
 // function to add new products
 function addProd() {
     inquirer.prompt([
@@ -183,7 +223,7 @@ function addProd() {
         {
             type: "input",
             name: "deptname",
-            message: "What department will it be in?"
+            message: "What department will it be in?" // this really should be a list, but I'm still working on that above and in supervisor script
         },
         {
             type: "input",

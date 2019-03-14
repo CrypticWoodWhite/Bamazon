@@ -1,9 +1,10 @@
-var mysql = require("mysql");
-var inquirer = require("inquirer");
+const mysql = require("mysql");
+const inquirer = require("inquirer");
 require("dotenv").config();
-var keys = require("./keys.js");
+const keys = require("./keys.js");
 
 // global variables
+// need to move these to more appropriate locations
 var buyProductName;
 var buyProductPrice;
 var buyProductQuantity;
@@ -11,22 +12,23 @@ var totalPrice;
 var productWanted;
 var quantityWanted;
 
-var connection = mysql.createConnection(keys.mysql);
+const connection = mysql.createConnection(keys.mysql);
 connection.connect(function (err) {
     if (err) throw err;
 })
 
-// function to create database and tables if they do not exist, if they do exist then nothing happens
-function createDBandTable(DBname, tableName, secondTable) {
+// functions to create database and tables if they do not exist, if they do exist then nothing happens
+// having these functions in each script means that the scripts don't depend on each other
+function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
 
-        // connection.query("DROP DATABASE IF EXISTS " + DBname); // debugging purposes, remove before final push
+        connection.query("DROP DATABASE IF EXISTS " + DBname);
 
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id NOT NULL UNIQUE, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (product_name))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT(3) NOT NULL AUTO_INCREMENT, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) DEFAULT(0), PRIMARY KEY (product_name), INDEX (item_id))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -42,6 +44,29 @@ function createDBandTable(DBname, tableName, secondTable) {
     })
 }
 
+function createSecondTable(DBname, tableName) {
+    return new Promise(function(resolve, reject) {
+        
+        connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
+
+        connection.query("USE " + DBname);
+
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (department_id VARCHAR(50) NOT NULL UNIQUE, department_name VARCHAR(20), overhead_costs INT(10), PRIMARY KEY (department_id))");
+
+        connection.query("INSERT IGNORE INTO " + tableName + " (department_id, department_name, overhead_costs) VALUES(7, 'Magical creatures', 130000), (666, 'Witchcraft', 25000), (923, 'Mythology', 1000000), (95, 'Normal stuff', 56000)");
+
+        connection.query("SELECT * FROM " + tableName, function(err, res) {
+            if (err) {
+                console.log(err);
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        })
+    })
+}
+createSecondTable("Bamazon", "Departments");
+
 // creates the DB and table, then asks the initial questions to the customer
 createDBandTable("Bamazon", "Products").then(function() { // why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
     console.log("\r\nWelcome to the Bamazon store! Look at the table above to see what whimsically diabolical things we have to offer\r\n");
@@ -50,7 +75,7 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
             type: "rawlist",
             name: "productQ",
             message: "Which product do you want to buy?",
-            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]
+            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"] // this should be a dynamically updated list
         },
         {
             type: "input",
@@ -85,13 +110,13 @@ function checkStock(productWanted, quantityWanted) {
         else {
             totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
             console.log("\r\nThe total price is $" + totalPrice + "\r\n");
-            transactions(buyProductName, buyProductQuantity);
+            transactions(buyProductName, buyProductQuantity, totalPrice);
         }
     })
 }
 
 // function to ask customer if they want to go through with the purchase, updates the table, and asks if they want something else
-function transactions(buyProductName, buyProductQuantity) {
+function transactions(buyProductName, buyProductQuantity, totalPrice) {
     inquirer.prompt([
         {
             type: "confirm",
@@ -103,6 +128,10 @@ function transactions(buyProductName, buyProductQuantity) {
         if (response.buyornobuy === true) {
             var updateProductQuantity = buyProductQuantity - quantityWanted;
             connection.query("UPDATE Products SET stock_quantity = ? WHERE product_name = ?", [updateProductQuantity, buyProductName], function(err, res) {
+                if (err) throw err;
+                return res;
+            })
+            connection.query("UPDATE Products SET product_sales = ? WHERE product_name = ?", [totalPrice, buyProductName], function(err, res) {
                 if (err) throw err;
                 return res;
             })
@@ -128,7 +157,6 @@ function transactions(buyProductName, buyProductQuantity) {
                         console.log(err);
                     }
                     else {
-                        // console.table(res);
                         return res;
                     }
                 })
@@ -146,7 +174,7 @@ function customerQ() {
             type: "rawlist",
             name: "productQ",
             message: "Which product do you want to buy?",
-            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]
+            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]// this should also be a list that can be updated dynamically
         },
         {
             type: "input",
