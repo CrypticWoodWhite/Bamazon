@@ -2,6 +2,7 @@ var mysql = require("mysql");
 var inquirer = require("inquirer");
 require("dotenv").config();
 var keys = require("./keys.js");
+var server = require("./server.js");
 
 // global variables
 var buyProductName;
@@ -16,14 +17,17 @@ connection.connect(function (err) {
     if (err) throw err;
 })
 
-// function to create the DB and table
+// function to create database and table if they do not exist, if they do exist then nothing happens
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
+
+        connection.query("DROP DATABASE IF EXISTS " + DBname);
+
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT NOT NULL AUTO_INCREMENT UNIQUE, product_name VARCHAR(50), department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (item_id))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (product_name))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -53,12 +57,8 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
             type: "input",
             name: "quantityQ",
             message: "How many do you want?",
-            validate: function(input) { // ask about validate function syntax
-                if (isNaN(input) === true) {
-                    console.log("\r\n\r\nThat's not a number, try again\r\n");
-                    return false;
-                }
-                if (input <= 0) {
+            validate: function(input) {
+                if ((isNaN(input) === true) || (input <= 0)) {
                     console.log("\r\n\r\nThat's not a valid input, try again\r\n");
                     return false;
                 }
@@ -77,7 +77,7 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
 
 // checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {
-    connection.query("SELECT item_id, product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
+    connection.query("SELECT product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE ?", {product_name: productWanted}, function(err, res) {
         buyProductName = res[0].product_name;
         buyProductPrice = res[0].price_USD;
         buyProductQuantity = res[0].stock_quantity;
@@ -155,13 +155,9 @@ function customerQ() {
             type: "input",
             name: "quantityQ",
             message: "How many do you want?",
-            validate: function(input) { // ask about validate function syntax
-                if (isNaN(input) === true) {
-                    console.log("\r\nThat's not a number, try again");
-                    return false;
-                }
-                if (input <= 0) {
-                    console.log("\r\nThat's not a valid input, try again");
+            validate: function(input) {
+                if ((isNaN(input) === true) || (input <= 0)) {
+                    console.log("\r\n\r\nThat's not a valid input, try again\r\n");
                     return false;
                 }
                 return true;
@@ -178,7 +174,7 @@ function customerQ() {
 function notEnoughStock() {
     inquirer.prompt([
         {
-            type: "list",
+            type: "rawlist",
             name: "notenoughstock",
             message: "What do you want to do?",
             choices: ["Purchase a smaller amount", "Purchase something else", "Not purchase anything"]
@@ -186,10 +182,6 @@ function notEnoughStock() {
     ]).then(function(response) {
         if (response.notenoughstock === "Not purchase anything") {
             console.log("\r\nWe're sorry we couldn't help you today. Please come back anytime.")
-            // connection.query(("SELECT * FROM Products"), function(err, res) {
-            //     if (err) throw err;
-            //     console.table(res);
-            // })
             connection.end();
             return;
         }
@@ -199,12 +191,8 @@ function notEnoughStock() {
                     type: "input",
                     name: "smallerquantity",
                     message: "How many do you want?",
-                    validate: function(input) { // ask about validate function syntax
-                        if (isNaN(input) === true) {
-                            console.log("\r\n\r\nThat's not a number, try again\r\n");
-                            return false;
-                        }
-                        if (input <= 0) {
+                    validate: function(input) {
+                        if ((isNaN(input) === true) || (input <= 0)) {
                             console.log("\r\n\r\nThat's not a valid input, try again\r\n");
                             return false;
                         }
@@ -230,5 +218,3 @@ function notEnoughStock() {
 
     )
 }
-
-module.exports = createDBandTable;
