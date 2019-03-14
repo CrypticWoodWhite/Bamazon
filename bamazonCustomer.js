@@ -2,7 +2,6 @@ var mysql = require("mysql");
 var inquirer = require("inquirer");
 require("dotenv").config();
 var keys = require("./keys.js");
-var server = require("./server.js");
 
 // global variables
 var buyProductName;
@@ -17,17 +16,17 @@ connection.connect(function (err) {
     if (err) throw err;
 })
 
-// function to create database and table if they do not exist, if they do exist then nothing happens
-function createDBandTable(DBname, tableName) {
+// function to create database and tables if they do not exist, if they do exist then nothing happens
+function createDBandTable(DBname, tableName, secondTable) {
     return new Promise(function(resolve, reject) {
 
-        connection.query("DROP DATABASE IF EXISTS " + DBname);
+        // connection.query("DROP DATABASE IF EXISTS " + DBname); // debugging purposes, remove before final push
 
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (product_name))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id NOT NULL UNIQUE, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), PRIMARY KEY (product_name))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -72,8 +71,6 @@ createDBandTable("Bamazon", "Products").then(function() { // why do I have to do
         checkStock(productWanted, quantityWanted);
     })
 });
-
-
 
 // checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {

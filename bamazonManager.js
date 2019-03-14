@@ -123,7 +123,7 @@ function productsArray() {
     return new Promise(function(reject, resolve) {
         connection.query("SELECT product_name FROM Products", function(err, res) {
             if (err) {
-                reject(err);
+                reject(error);
             }
             var allItemsArray = [];
             for (i=0; i<res.length; i++) {
@@ -136,14 +136,17 @@ function productsArray() {
 
 // function to add more to products already in stock
 function addInvent() {
-    productsArray().then(function(results) {
-        // console.log("\r\n\r\nproductsArray results: " + results + "\r\n\r\n");
+    productsArray().finally(function(allItemsArray) {
+    // I get a UnhandledPromiseRejectionWarning error here. Console log shows that the promise does not pass its returned value (allItemsArray) into the .then() function
+    // Adding a .catch() at the end of the chain to handle the error but that doesn't help with my problem, just shows me more precisely where my problem is
+    // using .finally() instead of .then() doesn't help
+        console.log("\r\n\r\nproductsArray results: " + allItemsArray + "\r\n\r\n");
         inquirer.prompt([
         {
             type: "rawlist",
             name: "product",
             message: "What product do you want to add inventory to?",
-            choices: results
+            choices: allItemsArray
         },
         {
             type: "input",
@@ -151,7 +154,7 @@ function addInvent() {
             message: "How many do you want to add?"
         }
         ])
-    }).catch(function(error) {console.log(error);}).then(function(response) {
+    }).then(function(response) {
         console.log(response.product);
         console.log(response.quantity);
         connection.query("SELECT stock_quantity FROM Products WHERE product_name = '" + response.product + "'", function(err, res) {
