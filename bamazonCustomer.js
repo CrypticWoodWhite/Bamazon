@@ -3,8 +3,6 @@ const inquirer = require("inquirer");
 require("dotenv").config();
 const keys = require("./keys.js");
 
-// global variables
-// which ones do not need to be global?
 var buyProductName;
 var buyProductPrice;
 var buyProductQuantity;
@@ -17,12 +15,11 @@ connection.connect(function (err) {
     if (err) throw err;
 })
 
-// functions to create database and tables if they do not exist, if they do exist then nothing happens
-// having these functions in each script means that the scripts don't depend on each other
+// function to create db and table
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
 
-        // connection.query("DROP DATABASE IF EXISTS " + DBname);
+        connection.query("DROP DATABASE IF EXISTS " + DBname);
 
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
@@ -37,13 +34,12 @@ function createDBandTable(DBname, tableName) {
                 console.log(err);
                 reject(err);
             } else {
-                console.table(res);
                 resolve(res);
             }
         })
     })
 }
-
+// function to create depts table
 function createSecondTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
         
@@ -65,27 +61,11 @@ function createSecondTable(DBname, tableName) {
         })
     })
 }
-createSecondTable("Bamazon", "Departments");
-
-// function to create array of names of all products in stock
-function productsArray() {
-    return new Promise(function(reject, resolve) {
-        connection.query("SELECT product_name FROM Products", function(err, res) {
-            if (err) {
-                reject(error);
-            }
-            var allItemsArray = [];
-            for (i=0; i<res.length; i++) {
-                allItemsArray.push(Object.values(res[i])[0]);
-            }
-            resolve(allItemsArray);
-        })
-    })
-}
 
 // creates the DB and table, then asks the initial questions to the customer
-// why do I have to do an anonymous function here? Why can I not do .then(customerQ())?
-createDBandTable("Bamazon", "Products").then(function() {
+createDBandTable("Bamazon", "Products").then(function(results) {
+    console.table(results);
+}).then(function() {
     productsArray().then(function(error) {
         console.log(error);
     }, function(results) {
@@ -117,6 +97,24 @@ createDBandTable("Bamazon", "Products").then(function() {
         console.log(error);
     })})
 })
+createSecondTable("Bamazon", "Departments");
+
+// function to create array of names of all products in stock
+function productsArray() {
+    return new Promise(function(reject, resolve) {
+        connection.query("SELECT product_name FROM Products", function(err, results) {
+            if (err) {
+                console.log(err);
+                reject(err);
+            }
+            var allItemsArray = [];
+            for (i=0; i<results.length; i++) {
+                allItemsArray.push(Object.values(results[i])[0]);
+            }
+            resolve(allItemsArray);
+        })
+    })
+}
 
 // checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {
@@ -144,49 +142,33 @@ function transactions(buyProductName, buyProductQuantity, totalPrice) {
             name: "buyornobuy",
             message: "Do you want to go through with this purchase?"
         }
-    ]).then(function(error) {
-        console.log(error);
-    }, function(response) {
+    ]).then(function(response) {
         if (response.buyornobuy === true) {
             var updateProductQuantity = buyProductQuantity - quantityWanted;
-            connection.query("UPDATE Products SET stock_quantity = " + updateProductQuantity + " WHERE product_name = '" + buyProductName + "'", function(err, res) {
+            connection.query("UPDATE Products SET stock_quantity = " + updateProductQuantity + " WHERE product_name = '" + buyProductName + "'", function(err) {
                 if (err) throw err;
-                return res;
-            })
-            connection.query("UPDATE Products SET product_sales = ? WHERE product_name = ?", [totalPrice, buyProductName], function(err, res) {
+            });
+            connection.query("UPDATE Products SET product_sales = ? WHERE product_name = ?", [totalPrice, buyProductName], function(err) {
                 if (err) throw err;
-                return res;
-            })
+            });
             console.log("\r\nThere you go! I hope you enjoy your " + buyProductName + "!\r\n");
         }
         else {
             console.log("\r\nWe're sorry to hear that.\r\n");
         }
-    }).then(function(error) {
-        console.log(error);
-     }, function() {
+    }).then(function() {
             inquirer.prompt([
                 {
                     type: "confirm",
                     name: "anotherpurchase",
                     message: "Do you want to purchase something else?"
                 }
-            ]).then(function(error) {
-                console.log(error);
-            }, function(response) {
+            ]).then(function(response) {
                 if (response.anotherpurchase === true) {
                     customerQ();
                 }
                 else {
-                    console.log("\r\nThanks for stopping by! Have a great rest of your day!\r\n\r\n");
-                    connection.query(("SELECT * FROM Products"), function(err, res) {
-                        if (err) {
-                            console.log(err);
-                        }
-                        else {
-                            return res;
-                        }
-                    })
+                    console.log("\r\nThanks for stopping by! Have a great rest of your day!");
                     connection.end();
                     return;
                 }
@@ -196,30 +178,34 @@ function transactions(buyProductName, buyProductQuantity, totalPrice) {
 
 // function to ask the customer what they want to buy
 function customerQ() {
-    inquirer.prompt([
-        {
-            type: "rawlist",
-            name: "productQ",
-            message: "Which product do you want to buy?",
-            choices: ["Baby unicorn", "Frog eyeballs - 10 pack", "Tongue of newt - 2 pack", "Chimera", "Minotaur", "Imp", "Leprechaun", "Nephthys", "Little green men - 10 pack with spaceship", "Humans - 4 pack family unit with dog"]// this should also be a list that can be updated dynamically
-        },
-        {
-            type: "input",
-            name: "quantityQ",
-            message: "How many do you want?",
-            validate: function(input) {
-                if ((isNaN(input) === true) || (input <= 0)) {
-                    console.log("\r\n\r\nThat's not a valid input, try again\r\n");
-                    return false;
+    productsArray().then(function(error) {
+        console.log(error);
+    }, function(results) {
+        inquirer.prompt([
+            {
+                type: "rawlist",
+                name: "productQ",
+                message: "Which product do you want to buy?",
+                choices: results
+            },
+            {
+                type: "input",
+                name: "quantityQ",
+                message: "How many do you want?",
+                validate: function(input) {
+                    if ((isNaN(input) === true) || (input <= 0)) {
+                        console.log("\r\n\r\nThat's not a valid input, try again\r\n");
+                        return false;
+                    }
+                    return true;
                 }
-                return true;
             }
-        }
-        ]).then(function(customerResponse) {
-            productWanted = customerResponse.productQ;
-            quantityWanted = customerResponse.quantityQ;
-            checkStock(productWanted, quantityWanted);
-        })
+            ]).then(function(customerResponse) {
+                productWanted = customerResponse.productQ;
+                quantityWanted = customerResponse.quantityQ;
+                checkStock(productWanted, quantityWanted);
+            })
+    })
 }
 
 // function to ask customer what they want to do next if not enough stock

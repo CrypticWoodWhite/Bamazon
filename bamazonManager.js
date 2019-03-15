@@ -8,15 +8,15 @@ connection.connect(function (err) {
     if (err) throw err;
 })
 
-// functions to create database and tables if they do not exist, if they do exist then nothing happens
-// having these functions in each script means that the scripts don't depend on each other
+// function to create db and table
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
+
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) DEFAULT(0), PRIMARY KEY (product_name))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT(3) NOT NULL AUTO_INCREMENT, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) DEFAULT(0), PRIMARY KEY (product_name), INDEX (item_id))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -30,7 +30,7 @@ function createDBandTable(DBname, tableName) {
         })
     })
 }
-
+// function to create departments table
 function createSecondTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
         
@@ -52,6 +52,37 @@ function createSecondTable(DBname, tableName) {
         })
     })
 }
+
+// creates database and table if they do not exist yet, then moves on to asking what manager wants to do
+createDBandTable("Bamazon", "Products").then(
+    inquirer.prompt([
+        {
+            type: "rawlist",
+            name: "mgroptions",
+            message: "What do you want to do, oh great manager?",
+            choices: ["View products for sale", "View low inventory", "Add to inventory", "Add new product", "Exit"]
+        }
+    ]).then(function(response) {
+        switch (response.mgroptions) {
+            case "View products for sale": viewProd();
+                break;
+            case "View low inventory": viewLow();
+                break;
+            case "Add to inventory": addInvent();
+                break;
+            case "Add new product": addProd();
+                break;
+            case "Exit": console.log("\r\nHave a fabulous day!");
+                connection.end();
+                return;
+
+            default: console.log("\r\nSomething broke");
+                connection.end();
+                return;
+        }
+    }
+    )
+)
 createSecondTable("Bamazon", "Departments");
 
 // function to ask manager what they want to do next
@@ -85,45 +116,14 @@ function mgrOptions() {
     )
 }
 
-// creates database and table if they do not exist yet, then moves on to asking what manager wants to do
-createDBandTable("Bamazon", "Products").then(
-    inquirer.prompt([
-        {
-            type: "rawlist",
-            name: "mgroptions",
-            message: "What do you want to do, oh great manager?",
-            choices: ["View products for sale", "View low inventory", "Add to inventory", "Add new product", "Exit"]
-        }
-    ]).then(function(response) {
-        switch (response.mgroptions) {
-            case "View products for sale": viewProd();
-                break;
-            case "View low inventory": viewLow();
-                break;
-            case "Add to inventory": addInvent();
-                break;
-            case "Add new product": addProd();
-                break;
-            case "Exit": console.log("\r\nHave a fabulous day!");
-                connection.end();
-                return;
-
-            default: console.log("\r\nSomething broke");
-                connection.end();
-                return;
-        }
-    }
-    )
-)
-
 // function to view all products in stock
 function viewProd() {
     connection.query("SELECT * FROM Products", function(err, res) {
         if (err) {
             console.log(err);
         } else {
-            console.log("\r\nHere's everything we have in stock right now.\r\n")
             console.table(res);
+            console.log("Here's everything we have in stock right now.")
             mgrOptions();
         }
     })
@@ -135,8 +135,8 @@ function viewLow() {
         if (err) {
             console.log(err);
         } else {
-            console.log("\r\nHere's everything that has less than five items left in stock\r\n");
             console.table(res);
+            console.log("Here's everything that has less than five items left in stock.");
             mgrOptions();
         }
     })
@@ -147,7 +147,7 @@ function productsArray() {
     return new Promise(function(reject, resolve) {
         connection.query("SELECT product_name FROM Products", function(err, res) {
             if (err) {
-                reject(error);
+                reject(err);
             }
             var allItemsArray = [];
             for (i=0; i<res.length; i++) {
@@ -187,9 +187,7 @@ function addInvent() {
                     mgrOptions();
                 }
             })
-        })}).catch(function(error) {
-            console.log(error);
-        })
+        })})
     })
 }
 

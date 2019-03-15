@@ -4,5 +4,3 @@ exports.mysql = {
     password: process.env.MYSQLPWD,
     port: 3306
 };
-
-// console.log("mysql password loaded");
