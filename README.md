@@ -1,6 +1,6 @@
 # **Bamazon**
 
-This is a CLI app that allows for three users: a customer, manager, and supervisor. These three users interact with a database that contains products for sale, and relevant information about those products. Videos (no sound) demonstrating the app's functionality are included in the repository here: //link here
+This is a CLI app that allows for three users: a customer, manager, and supervisor. These three users interact with a database that contains products for sale, and relevant information about those products. Videos (no sound) demonstrating the app's functionality are included in the repository here: https://github.com/CrypticWoodWhite/Bamazon/tree/master/Video%20demos.
 
 ## Customer
 - Can purchase any item they want from the store
