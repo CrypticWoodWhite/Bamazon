@@ -19,13 +19,11 @@ connection.connect(function (err) {
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
 
-        connection.query("DROP DATABASE IF EXISTS " + DBname);
-
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
 
-        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT(3) NOT NULL AUTO_INCREMENT, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) DEFAULT(0), PRIMARY KEY (product_name), INDEX (item_id))");
+        connection.query("CREATE TABLE IF NOT EXISTS " + tableName + " (item_id INT(3) NOT NULL AUTO_INCREMENT, product_name VARCHAR(50) NOT NULL, department_name VARCHAR(20), price_USD DECIMAL(10, 2), stock_quantity INT(20), product_sales INT(20) NOT NULL DEFAULT(0), PRIMARY KEY (product_name), INDEX (item_id))");
 
         connection.query("INSERT IGNORE INTO " + tableName + " (product_name, department_name, price_USD, stock_quantity) VALUES('Baby unicorn', 'Magical creatures', 10249.99, 5), ('Frog eyeballs - 10 pack', 'Witchcraft', 13.50, 2310), ('Tongue of newt - 2 pack', 'Witchcraft', 5.79, 1053), ('Chimera', 'Magical creatures', 999.99, 20), ('Minotaur', 'Mythology', 99999.99, 1), ('Imp', 'Magical creatures', 0.99, 666), ('Leprechaun', 'Magical creatures', 110.75, 283), ('Nephthys', 'Mythology', 250000.79, 1), ('Little green men - 10 pack with spaceship', 'Magical creatures', 452.69, 15), ('Humans - 4 pack family unit with dog', 'Normal stuff', 675.25, 57)");
 
@@ -118,10 +116,11 @@ function productsArray() {
 
 // checks to see if there's enough of the desired item in stock and calculates price
 function checkStock(productWanted, quantityWanted) {
-    connection.query("SELECT product_name, stock_quantity, price_USD, stock_quantity FROM Products WHERE product_name = '" + productWanted + "'", function(err, result) {
+    connection.query("SELECT product_name, stock_quantity, price_USD, stock_quantity, product_sales FROM Products WHERE product_name = '" + productWanted + "'", function(err, result) {
         buyProductName = result[0].product_name;
         buyProductPrice = result[0].price_USD;
         buyProductQuantity = result[0].stock_quantity;
+        buyProductSales = result[0].product_sales;
         if (quantityWanted > buyProductQuantity) {
             console.log("\r\nWe're sorry but we only have " + buyProductQuantity + " of those in stock.\r\n");
             notEnoughStock();
@@ -129,13 +128,13 @@ function checkStock(productWanted, quantityWanted) {
         else {
             totalPrice = parseFloat(quantityWanted) * parseFloat(buyProductPrice);
             console.log("\r\nThe total price is $" + totalPrice + "\r\n");
-            transactions(buyProductName, buyProductQuantity, totalPrice);
+            transactions(buyProductName, buyProductQuantity, totalPrice, buyProductSales);
         }
     })
 }
 
 // function to ask customer if they want to go through with the purchase, updates the table, and asks if they want something else
-function transactions(buyProductName, buyProductQuantity, totalPrice) {
+function transactions(buyProductName, buyProductQuantity, totalPrice, buyProductSales) {
     inquirer.prompt([
         {
             type: "confirm",
@@ -143,36 +142,39 @@ function transactions(buyProductName, buyProductQuantity, totalPrice) {
             message: "Do you want to go through with this purchase?"
         }
     ]).then(function(response) {
-        if (response.buyornobuy === true) {
+        if (response.buyornobuy) {
             var updateProductQuantity = buyProductQuantity - quantityWanted;
-            connection.query("UPDATE Products SET stock_quantity = " + updateProductQuantity + " WHERE product_name = '" + buyProductName + "'", function(err) {
-                if (err) throw err;
-            });
-            connection.query("UPDATE Products SET product_sales = ? WHERE product_name = ?", [totalPrice, buyProductName], function(err) {
-                if (err) throw err;
-            });
+            var updateProductSales = buyProductSales + totalPrice;
+            console.log("new quantity: " + updateProductQuantity);
+            console.log("new product sales: " + updateProductSales);
+            console.log("name: " + buyProductName);
+
+            connection.query("UPDATE Products SET stock_quantity = " + updateProductQuantity + " WHERE product_name = '" + buyProductName + "'");
+
+            connection.query("UPDATE Products SET product_sales = " + updateProductSales + " WHERE product_name = '" + buyProductName + "'");
+
             console.log("\r\nThere you go! I hope you enjoy your " + buyProductName + "!\r\n");
         }
         else {
             console.log("\r\nWe're sorry to hear that.\r\n");
         }
     }).then(function() {
-            inquirer.prompt([
-                {
-                    type: "confirm",
-                    name: "anotherpurchase",
-                    message: "Do you want to purchase something else?"
-                }
-            ]).then(function(response) {
-                if (response.anotherpurchase === true) {
-                    customerQ();
-                }
-                else {
-                    console.log("\r\nThanks for stopping by! Have a great rest of your day!");
-                    connection.end();
-                    return;
-                }
-            })
+        inquirer.prompt([
+            {
+                type: "confirm",
+                name: "anotherpurchase",
+                message: "Do you want to purchase something else?"
+            }
+        ]).then(function(response) {
+            if (response.anotherpurchase) {
+                customerQ();
+            }
+            else {
+                console.log("\r\nThanks for stopping by! Have a great rest of your day!");
+                connection.end();
+                return;
+            }
+        })
     })
 }
 
