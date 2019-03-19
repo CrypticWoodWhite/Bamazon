@@ -12,8 +12,6 @@ connection.connect(function (err) {
 function createDBandTable(DBname, tableName) {
     return new Promise(function(resolve, reject) {
 
-        connection.query("DROP DATABASE IF EXISTS " + DBname);
-
         connection.query("CREATE DATABASE IF NOT EXISTS " + DBname);
 
         connection.query("USE " + DBname);
